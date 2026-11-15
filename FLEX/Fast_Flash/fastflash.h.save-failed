@@ -1,0 +1,114 @@
+#ifndef FASTFLASH_H
+#define FASTFLASH_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+#include <time.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+/* --- Helper Functions for Parsing Arguments --- */
+static void sanitize_commas(char *str) {
+    for (int i = 0; str[i]; i++) if (str[i] == ',') str[i] = ' ';
+}
+
+static int get_2_doubles(const char *args, double *a, double *b) {
+    char buf[256];
+    strncpy(buf, args, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+    sanitize_commas(buf);
+    return sscanf(buf, "%lf %lf", a, b) == 2;
+}
+
+/* --- Core Functions (Easy to Explain to Teacher) --- */
+
+// 1. Basic Math
+void ff_add(const char *a) { double x, y; if(get_2_doubles(a, &x, &y)) printf("= %.4g\n", x + y); else puts("Usage: add <num1>, <num2>"); }
+void ff_sub(const char *a) { double x, y; if(get_2_doubles(a, &x, &y)) printf("= %.4g\n", x - y); else puts("Usage: sub <num1>, <num2>"); }
+void ff_mul(const char *a) { double x, y; if(get_2_doubles(a, &x, &y)) printf("= %.4g\n", x * y); else puts("Usage: mul <num1>, <num2>"); }
+void ff_div(const char *a) { double x, y; if(get_2_doubles(a, &x, &y) && y != 0) printf("= %.4g\n", x / y); else puts("Error: Division by zero"); }
+
+// 2. Unit & Temperature Conversion
+void ff_c2f(const char *a) { double x; if(sscanf(a, "%lf", &x) == 1) printf("= %.2f °F\n", (x * 9.0/5.0) + 32.0); else puts("Usage: c2f <celsius>"); }
+void ff_f2c(const char *a) { double x; if(sscanf(a, "%lf", &x) == 1) printf("= %.2f °C\n", (x - 32.0) * 5.0/9.0); else puts("Usage: f2c <fahrenheit>"); }
+
+// 3. Finance & Everyday Utility
+void ff_tip(const char *a) { double b, p; if(get_2_doubles(a, &b, &p)) printf("Tip: $%.2f | Total: $%.2f\n", b*(p/100.0), b*(1.0 + p/100.0)); else puts("Usage: tip <bill>, <tip_percent>"); }
+void ff_bmi(const char *a) {
+    double w, h;
+    if(get_2_doubles(a, &w, &h) && h > 0) {
+        double bmi = w / (h * h);
+        printf("BMI: %.2f (%s)\n", bmi, (bmi < 25.0) ? "Normal" : "Overweight");
+    } else puts("Usage: bmi <weight_kg>, <height_m>");
+}
+
+// 4. Random & Fun Games
+void ff_coin_toss(const char *a) { (void)a; printf("= %s\n", (rand() % 2 == 0) ? "Heads" : "Tails"); }
+void ff_dice_roll(const char *a) { (void)a; printf("= Rolled a %d\n", (rand() % 6) + 1); }
+
+/* --- Command Registry Table --- */
+typedef struct {
+    const char *name;
+    void (*func)(const char *args);
+    const char *desc;
+} FastFlashCommand;
+
+static FastFlashCommand COMMAND_TABLE[] = {
+    {"add", ff_add, "Add two numbers"},
+    {"sub", ff_sub, "Subtract two numbers"},
+    {"mul", ff_mul, "Multiply two numbers"},
+    {"div", ff_div, "Divide two numbers"},
+    {"c2f", ff_c2f, "Celsius to Fahrenheit"},
+    {"f2c", ff_f2c, "Fahrenheit to Celsius"},
+    {"tip", ff_tip, "Calculate tip and total bill"},
+    {"bmi", ff_bmi, "Calculate Body Mass Index"},
+    {"coin_toss", ff_coin_toss, "Flip a coin"},
+    {"dice_roll", ff_dice_roll, "Roll a 6-sided dice"}
+};
+
+#define TOTAL_COMMANDS ((int)(sizeof(COMMAND_TABLE) / sizeof(COMMAND_TABLE[0])))
+
+static void ff_help() {
+    printf("\n=== Fast Flash Lang - Commands ===\n");
+    for (int i = 0; i < TOTAL_COMMANDS; i++) {
+        printf("%-12s : %s\n", COMMAND_TABLE[i].name, COMMAND_TABLE[i].desc);
+    }
+    printf("==================================\n\n");
+}
+
+static void ff_execute(char *input_line) {
+    input_line[strcspn(input_line, "\r\n")] = '\0';
+    char *cmd_ptr = input_line;
+    while (*cmd_ptr && isspace((unsigned char)*cmd_ptr)) cmd_ptr++;
+    if (*cmd_ptr == '\0') return;
+
+    char cmd[64];
+    int idx = 0;
+    while (*cmd_ptr && !isspace((unsigned char)*cmd_ptr) && idx < 63) {
+        cmd[idx++] = *cmd_ptr++;
+    }
+    cmd[idx] = '\0';
+
+    while (*cmd_ptr && isspace((unsigned char)*cmd_ptr)) cmd_ptr++;
+    const char *args = cmd_ptr;
+
+    if (strcmp(cmd, "help") == 0) {
+        ff_help();
+        return;
+    }
+
+    for (int i = 0; i < TOTAL_COMMANDS; i++) {
+        if (strcmp(cmd, COMMAND_TABLE[i].name) == 0) {
+            COMMAND_TABLE[i].func(args);
+            return;
+        }
+    }
+    printf("Error: Unknown command '%s'. Type 'help'.\n", cmd);
+}
+
+#endif // FASTFLASH_H
